@@ -31,5 +31,24 @@ class RawQueryTest extends TestCase
         self::assertEquals($date, $results[0]->updated_at);
     }
 
+    public function testCrudNamedParameter(){
+        
+        DB::insert("insert into categories(id, name, description, created_at, updated_at) values (:id, :name, :description, :created_at, :updated_at)",
+            ["id" => "FASHION",
+             "name" => "Fashion",
+             "description"=>"Fashion Category",
+             "created_at" => NOW(), 
+             "updated_at" => NOW()]);
+
+        $results=DB::select("SELECT * FROM categories WHERE id=?", ["FASHION"]);
+        $date=NOW();
+        self::assertCount(1, $results);
+        self::assertEquals("FASHION", $results[0]->id);
+        self::assertEquals("Fashion", $results[0]->name);
+        self::assertEquals("Fashion Category", $results[0]->description);
+        self::assertEquals($date, $results[0]->created_at);
+        self::assertEquals($date, $results[0]->updated_at);
+    }
+
     
 }
