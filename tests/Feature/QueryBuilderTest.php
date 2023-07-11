@@ -161,4 +161,55 @@ class QueryBuilderTest extends TestCase
             Log::info(json_encode($collection[$i]));
         }
     }
+
+    public function testUpdate(){
+        $this->testInsert(true);
+
+        DB::table("categories")->where("id","=","SMARTPHONE")->update(["id" => "HANDPHONE","name" => "Handphone"]);
+
+        $collection=DB::table("categories")->where("name","=","Handphone")->get();
+        self::assertCount(1, $collection);
+
+        $collection->each(function($item){
+            Log::info(json_encode($item));
+        });
+    }
+
+    public function testUpsert(){
+        DB::table("categories")->updateOrInsert([
+            "id" => "VOUCHER"
+        ],[
+            "id" => "VOUCHER",
+            "name" => "Voucher",
+            "description" => "Ticket and Voucher",
+            "created_at" => NOW(),
+            "updated_at" => NOW()
+        ]);
+
+        $collection=DB::table("categories")->where("id","=","VOUCHER")->get();
+        self::assertCount(1, $collection);
+        $collection->each(function($item){
+            Log::info(json_encode($item));
+        });
+    }
+
+    public function testIncrement(){
+        DB::table("counters")->where("id","=","sample")->increment("counter",1);
+
+        $collection=DB::table("counters")->where("id","=","sample")->get();
+        self::assertCount(1, $collection);
+        $collection->each(function($item){
+            Log::info(json_encode($item));
+        });
+    }
+
+    public function testDecrement(){
+        DB::table("counters")->where("id","=","sample")->decrement("counter",1);
+
+        $collection=DB::table("counters")->where("id","=","sample")->get();
+        self::assertCount(1, $collection);
+        $collection->each(function($item){
+            Log::info(json_encode($item));
+        });
+    }
 }
