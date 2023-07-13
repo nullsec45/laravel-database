@@ -17,6 +17,7 @@ class QueryBuilderTest extends TestCase
     protected function setUp():void{
         parent::setUp();
 
+        DB::delete("delete from products");
         DB::delete("delete from categories");
     }
 
@@ -218,11 +219,106 @@ class QueryBuilderTest extends TestCase
 
         DB::table("categories")->where("id","=","SMARTPHONE")->delete();
 
-        $collection=DB::table("categories")->where("id","=","SMARTPHONE")->get();
+        $collection=DB::    table("categories")->where("id","=","SMARTPHONE")->get();
         self::assertCount(0, $collection);
 
         $collection->each(function($item){
             Log::info(json_encode($item));
         });
+    }
+
+    public function insertProducts(){
+        $this->testInsert(true);
+
+        try{
+            DB::transaction(function () {
+                DB::table("products")->insert([
+                    "id" => "1",
+                    "name" => "Iphone 14 Pro Max",
+                    "category_id" => "SMARTPHONE",
+                    "price" => 200000000
+                ]);
+
+                DB::table("products")->insert([
+                    "id" => "2",
+                    "name" => "Samsung Galaxy S21 Ultra",
+                    "category_id" => "SMARTPHONE",
+                    "price" => 100000000
+                ]);
+
+                DB::table("products")->insert([
+                    "id" => "3",
+                    "name" => "Realme C5",
+                    "category_id" => "SMARTPHONE",
+                    "price" => 5000000
+                ]);
+            });
+        }catch(QueryException $error){
+       }
+    }
+
+    public function testQueryBuilderJoin(){
+        $this->insertProducts();
+
+        $collection=DB::table("products")
+                    ->join("categories","products.category_id","=","categories.id")
+                    ->select("products.id","products.name","categories.name as category_name","products.price")
+                    ->get();
+
+        self::assertCount(3, $collection);
+        $collection->each(function($item){
+            Log::info(json_encode($item));
+        });
+    }
+
+    public function testOrdering(){
+        $this->insertProducts();
+
+        $collection=DB::table("products")->whereNotNull("id")
+                                         ->orderBy("price","asc")
+                                         ->orderBy("name","asc")
+                                         ->get();
+        self::assertCount(3, $collection);
+        $collection->each(function($item){
+            Log::info(\json_encode($item));
+        });
+    }
+
+    public function testPaging(){
+        $this->testInsert(true);
+        
+        $collection=DB::table("categories")
+                        ->skip(0)
+                        ->take(5)
+                        ->get();
+
+        self::assertCount(5, $collection);
+        $collection->each(function($item){
+            Log::info(json_encode($item));
+        });
+    }
+
+    public function inserManyCounters(){
+        for($i=0;$i<100;$i++){
+            DB::table("counters")->insert([
+                "id" => "sample ".$i,
+                "counter" => $i,
+            ]);
+        }
+    }
+
+    public function testChunk(){
+        $this->inserManyCounters();
+
+        DB::table("counters")->orderBy("id")
+            ->chunk(10, function($counters){
+                self::assertNotNull($counters);
+                Log::info("Start Chunk");
+                $counters->each(function($counter){
+                    Log::info(json_encode($counter));
+                });
+                Log::info("End Chunk");
+
+            });
     }
 }
