@@ -19,6 +19,7 @@ class QueryBuilderTest extends TestCase
 
         DB::delete("delete from products");
         DB::delete("delete from categories");
+        DB::delete("delete from counters");
     }
 
     public function testInsert($use=false): void
@@ -320,5 +321,180 @@ class QueryBuilderTest extends TestCase
                 Log::info("End Chunk");
 
             });
+    }
+
+    public function testLazy(){
+        $this->inserManyCounters();
+
+        $collection=DB::table("counters")->orderBy("id")->lazy(10)->take(3);
+        self::assertNotNull($collection);
+        
+        $collection->each(function($item){
+            Log::info(json_encode($item));
+        });
+
+    }
+
+    public function testCursor(){
+        $this->inserManyCounters();
+
+        $collection=DB::table("counters")->orderBy("id")->cursor();
+        self::assertNotNull($collection);
+        
+        $collection->each(function($item){
+            Log::info(json_encode($item));
+        });
+
+    }
+
+    public function testAggregate(){
+        $this->inserManyCounters();
+        $this->insertProducts();
+
+        $result=DB::table("counters")->count("id");
+        self::assertEquals(100, $result);
+       
+        echo $result.PHP_EOL;
+  
+        $result=DB::table("counters")->min("counter");
+        self::assertEquals(0, $result);
+        echo $result.PHP_EOL;
+        
+        $result=DB::table("counters")->max("counter");
+        self::assertEquals(99, $result);
+        echo $result.PHP_EOL;
+        
+        $result=DB::table("products")->sum("price");
+        self::assertEquals(305000000, $result);
+        echo $result.PHP_EOL;
+        
+        $result=DB::table("products")->avg("price");
+        self::assertEquals(101666666.6667, $result);
+        echo $result.PHP_EOL;
+    }
+
+    public function testRawAggregate(){
+        $this->insertProducts();
+
+        $collection=DB::table("products")
+                    ->select(
+                        DB::raw("count(*) as total_product"),
+                        DB::raw("min(price) as min_price"),
+                        DB::raw("max(price) as max_price")
+                    )->get();
+
+                    
+        self::assertEquals(3, $collection[0]->total_product);
+        self::assertEquals(5000000, $collection[0]->min_price);
+        self::assertEquals(200000000, $collection[0]->max_price);
+        $collection->each(function($item){
+            Log::info(json_encode($item));
+        });
+
+    }
+
+    public function insertProductFood(){
+        DB::table("products")->insert([
+            "id" => "4",
+            "name" => "Bakso",
+            "category_id" => "FOOD",
+            "price" => 20000
+        ]);
+        DB::table("products")->insert([
+            "id" => "5",
+            "name" => "Mie Ayam Bakso",
+            "category_id" => "FOOD",
+            "price" => 25000
+        ]);
+    }
+
+    public function testGrouping(){
+        $this->insertProducts();
+        $this->insertProductFood();
+
+        $collection=DB::table("products")
+                        ->select("category_id", DB::raw("count(*) as total_product"))
+                        ->groupBy("category_id")
+                        ->orderBy("category_id", "desc")
+                        ->get();
+
+        $collection->each(function($item){
+            Log::info(json_encode($item));
+        });
+        self::assertCount(2, $collection);
+        self::assertEquals("SMARTPHONE", $collection[0]->category_id);
+        self::assertEquals("FOOD", $collection[1]->category_id);
+        self::assertEquals(3, $collection[0]->total_product);
+        self::assertEquals(2, $collection[1]->total_product);
+    }
+
+    public function testGroupByHaving(){
+        $this->insertProducts();
+        $this->insertProductFood();
+
+        $collection=DB::table("products")
+                        ->select("category_id", DB::raw("count(*) as total_product"))
+                        ->groupBy("category_id")
+                        ->having(DB::raw("count(*)"),">", 2)
+                        ->orderBy("category_id", "desc")
+                        ->get();
+
+        $collection->each(function($item){
+            Log::info(json_encode($item));
+        });
+       
+        self::assertCount(1, $collection);
+    }
+
+    public function testLocking(){
+        $this->insertProducts();
+
+        DB::transaction(function(){    
+            $collection=DB::table("products")
+            ->where("id","=","1")
+            ->lockForUpdate()
+            ->get();
+             self::assertCount(1, $collection);
+        });
+    }
+
+    public function testPagination(){
+        $this->testInsert(true);
+
+        $paginate=DB::table("categories")->paginate(perPage:2, page:2);
+
+        self::assertEquals(2, $paginate->currentPage());
+        self::assertEquals(2, $paginate->perPage());
+        self::assertEquals(3, $paginate->lastPage());
+        self::assertEquals(6, $paginate->total());
+
+        $collection=$paginate->items();
+        self::assertCount(2, $collection);
+
+        foreach($collection as $item){
+            Log::info(json_encode($item));
+        }
+    }
+
+    public function testIteratePagination(){
+      $this->testInsert(true);
+
+      $page=1;
+
+        while(true){
+            $paginate=DB::table("categories")->paginate(perPage:2, page:$page);
+
+            if($paginate->isEmpty()){
+                break;
+            }else{
+                $collection=$paginate->items();
+                self::assertCount(2, $collection);
+    
+                foreach($collection as $item){
+                    Log::info(json_encode($item));
+                }
+                $page++;
+            }   
+        }
     }
 }
