@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Database\Seeders\CategorySeeder;
 
 class QueryBuilderTest extends TestCase
 {
@@ -24,72 +25,11 @@ class QueryBuilderTest extends TestCase
 
     public function testInsert($use=false): void
     {
-        try{
-            DB::transaction(function () {
-                DB::table("categories")->insert(
-                    [
-                        "id" => "FASHION",
-                        "name" => "Fashion",
-                        "description" => "Fashion Category",
-                        "created_at" => NOW(),
-                        "updated_at" => NOW(),
-                    ]
-                 );
-                 
-                DB::table("categories")->insert(
-                    [
-                        "id" => "FOOD",
-                        "name" => "Food",
-                        "description" => "Food Category",
-                        "created_at" => NOW(),
-                        "updated_at" => NOW(),
-                    ]
-                );
-        
-                DB::table("categories")->insert(
-                    [
-                        "id" => "SMARTPHONE",
-                        "name" => "Smartphone",
-                        "description" => "Smartphone Category",
-                        "created_at" => NOW(),
-                        "updated_at" => NOW(),
-                    ]
-                );
-                DB::table("categories")->insert(
-                    [
-                        "id" => "JEWELLERY",
-                        "name" => "Jewellery",
-                        "description" => "Jewellery Category",
-                        "created_at" => NOW(),
-                        "updated_at" => NOW(),
-                    ]
-                );
-                DB::table("categories")->insert(
-                    [
-                        "id" => "LAPTOP",
-                        "name" => "Laptop",
-                        "description" => NULL,
-                        "created_at" => NOW(),
-                        "updated_at" => NOW(),
-                    ]
-                );
-                DB::table("categories")->insert(
-                    [
-                        "id" => "HEALT",
-                        "name" => "Health",
-                        "description" => NULL,
-                        "created_at" => NOW(),
-                        "updated_at" => NOW(),
-                    ]
-                );
-            });
-        }catch(QueryException $error){
-        
-        }
+        $this->seed(CategorySeeder::class);
 
        if($use == false){
-        $results=DB::select("select COUNT(id) AS total FROM categories");
-        self::assertEquals(2,$results[0]->total);
+            $results=DB::select("select COUNT(id) AS total FROM categories");
+            self::assertEquals(6,$results[0]->total);
        }
     }
 
